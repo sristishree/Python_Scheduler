@@ -3,6 +3,8 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
+from rest_framework import generics
+
 from rest_framework.views import APIView
 from .serializer import TaskSerializer
 from .models import tasks
@@ -14,6 +16,13 @@ class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
 
 class TaskAPIView(APIView):
+    def get_object(self, pk):
+        print(pk)
+        try:
+            return tasks.objects.get(pk=pk)
+        except:
+            print(pk, status.HTTP_400_BAD_REQUEST)
+
     def post(self, request, format=None):
         serializer = TaskSerializer(data=request.data)
         if serializer.is_valid():
@@ -23,6 +32,22 @@ class TaskAPIView(APIView):
         else:
             print(serializer.is_valid())
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #52.168.183.147
+
+    def put(self, request, pk=None, format=None):
+        pk = request.data['coid']
+        print("here")
+        print(request)
+        user = self.get_object(pk)
+        serializer = TaskSerializer(user, data=request.data)
+        if serializer.is_valid():
+            updateJob(request)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            print(serializer.is_valid())
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 
@@ -36,7 +61,7 @@ def sched_list(request):
  for job in scl:
      jobdict = {}
     #  jt = type(job.trigger)
-
+     print("job",job.name)
      jobdict['job_name'] = job.name
     #  jobdict['job_trigger'] = jt
      jobdict['next run'] = job.next_run_time    
@@ -82,9 +107,15 @@ def sched_state(request):
 
 @api_view(['POST'])
 def sched_remove(request):
-    r_jobid = int(request.data['job_id'])
+    r_jobid = int(request.data['coid'])
+    pk = request.data['coid']
     try:
+        user = tasks.objects.get(pk=pk)
+    except:
+        print('Job not found', status.HTTP_400_BAD_REQUEST)
+    serializer = TaskSerializer(user, data=request.data)
+    if serializer.is_valid():
         d = scheduler.remove_job(r_jobid)
         return Response("Job Deleted", status=status.HTTP_200_OK)
-    except:
+    else:
         return Response("Job not found", status=status.HTTP_400_BAD_REQUEST)
